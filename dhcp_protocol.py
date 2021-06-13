@@ -239,5 +239,3 @@ def DHCP_decode(data):
         decoded_data['lease_time'] = -1
 
     return decoded_data
-
-

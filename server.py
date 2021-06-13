@@ -20,10 +20,10 @@ def client_handler(connection, message, address, ID):
 
 
 def start_server(address=('127.0.0.1', 8080)):
-
     counter = 1
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as serverSocket:
-        try:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as serverSocket:
+
             serverSocket.bind(address)
             print('Server started')
 
@@ -34,11 +34,10 @@ def start_server(address=('127.0.0.1', 8080)):
                                  args=(serverSocket, data[0], data[1], counter)).start()
                 counter += 1
 
-
-        except ConnectionError as msg:
-            print(msg)
-        except IOError as msg:
-            print(msg)
+    except ConnectionError as msg:
+        print(msg)
+    except IOError as msg:
+        print(msg)
 
 
 
