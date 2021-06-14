@@ -29,6 +29,8 @@ def create_id():
 def mac_addr_to_byte(mac=None):
     if mac is None:
         mac = hex(get_mac())[2:]
+    else:
+        mac = mac.replace('.', '')
     while len(mac) < 12:
         mac = '0' + mac
     MAC_bytes = b''
@@ -250,3 +252,4 @@ def DHCP_decode(data):
 
 if __name__ == '__main__':
     print(DHCP_decode(DHCP_offer_encode(create_id(), '127.0.0.1', '10.10.01.1', 3600)))
+    print(m)

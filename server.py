@@ -40,6 +40,5 @@ def start_server(address=('127.0.0.1', 8080)):
         print(msg)
 
 
-
 if __name__ == '__main__':
     start_server()

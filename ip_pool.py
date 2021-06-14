@@ -1,5 +1,8 @@
 import json
-from threading import Semaphore
+from threading import Semaphore, Thread
+import time
+from datetime import timedelta
+from tabulate import tabulate
 
 
 class Pool:
@@ -123,5 +126,74 @@ class Pool:
         return self.__lease_time
 
 
-if __name__ == '__main__':
-    p = Pool()
+class ip_allocation_log:
+    def __init__(self, device_name, mac_addr, allocated_ip, lease_time):
+        self.__device_name = device_name
+        self.__mac_addr = mac_addr
+        self.__allocated_ip = allocated_ip
+        self.__lease_time = lease_time
+        Thread(target=self.__timer).start()
+
+    def __timer(self):
+        while self.__lease_time > 0:
+            time.sleep(1)
+            self.__lease_time -= 1
+
+    def expired_time(self):
+        return self.__lease_time
+
+    def __eq__(self, other):
+        if type(other) != type(self):
+            return False
+
+        return self.__mac_addr == other.__mac_addr and self.__allocated_ip == other.__allocated_ip
+
+    def information(self):
+        _ = str(timedelta(seconds=self.__lease_time)).split(':')
+        expired_time = _[0] + ' hours, ' + _[1] + ' minutes, ' + _[2] + ' seconds'
+        return [self.__device_name, self.__mac_addr, self.__allocated_ip, expired_time]
+
+
+class ip_allocation_table:
+    def __init__(self):
+        self.table = []
+        self.lock = Semaphore()
+
+    def add_allocation(self, device_name, mac_addr, allocated_ip, lease_time):
+        self.lock.acquire()
+        new_log = ip_allocation_log(device_name, mac_addr, allocated_ip, lease_time)
+        if new_log not in self.table:
+            self.table.append(new_log)
+        self.lock.release()
+
+    def remove_allocation(self, mac_addr, allocated_ip):
+        self.lock.acquire()
+        l_ = ip_allocation_log(None, mac_addr, allocated_ip, 0)
+        for _ in self.table:
+            if _ == l_:
+                self.table.remove(_)
+                self.lock.release()
+                return
+        self.lock.release()
+
+    def get_log_data(self, mac_addr, allocated_ip):
+        self.lock.acquire()
+        l_ = ip_allocation_log(None, mac_addr, allocated_ip, 0)
+        for _ in self.table:
+            if _ == l_:
+                self.lock.release()
+                return _
+        self.lock.release()
+        return None
+
+    def print_table(self):
+        self.lock.acquire()
+
+        data = []
+        for l_ in self.table:
+            if l_.expired_time() > 0:
+                data.append(l_.information())
+
+        print(tabulate(data, headers=['Device Name', 'MAC Address', 'IP Address', 'Expire Time'],
+                       tablefmt="pretty"), )
+        self.lock.release()
