@@ -6,8 +6,8 @@ class Pool:
         configuration = Pool.__read_from_json()
         self.pool_mode = configuration['pool_mode']
         self.ip_pool = []
-        self.reservation_list = list(configuration['reservation_list'])
-        self.black_list = list(configuration['black_list'])
+        self.reservation_list = configuration['reservation_list']
+        self.black_list = configuration['black_list']
         self.lease_time = configuration['lease_time']
         if self.pool_mode == 'range':
             start = configuration['range']['from']
@@ -39,7 +39,7 @@ class Pool:
                                 break
                 index = '.'.join(map(lambda x: str(x), data))
         else:
-            pass
+            pass  # todo
 
     @staticmethod
     def __read_from_json():

@@ -3,7 +3,6 @@ import random
 import struct
 
 
-
 class HARDCODES:
     REQUEST = b'\x01'
     REPLY = b'\x02'
@@ -27,14 +26,15 @@ def create_id():
     return ID
 
 
-def system_mac_addr():
-    str_mac = hex(get_mac())[2:]
-    while len(str_mac) < 12:
-        str_mac = '0' + str_mac
-    MAC = b''
+def mac_addr_to_byte(mac=None):
+    if mac is None:
+        mac = hex(get_mac())[2:]
+    while len(mac) < 12:
+        mac = '0' + mac
+    MAC_bytes = b''
     for _ in range(0, 12, 2):
-        MAC += bytes.fromhex(str_mac[_:_ + 2])
-    return MAC
+        MAC_bytes += bytes.fromhex(mac[_:_ + 2])
+    return MAC_bytes
 
 
 def ip_addr_to_byte(ip_addr):
@@ -42,6 +42,15 @@ def ip_addr_to_byte(ip_addr):
     for i in ip_addr.split('.'):
         IP_Byte += struct.pack('!B', int(i))
     return IP_Byte
+
+
+def byte_to_ip_addr(byte_array):
+    return '.'.join(map(lambda x: str(x), byte_array))
+
+
+def byte_to_mac_addr(byte_array):
+    MAC = byte_array.hex()
+    return '.'.join(MAC[i:i + 2] for i in range(0, 12, 2))
 
 
 def DHCP_discover_encode(ID):
@@ -56,7 +65,7 @@ def DHCP_discover_encode(ID):
     query += HARDCODES.DEFAULT_IP
     query += HARDCODES.DEFAULT_IP
     query += HARDCODES.DEFAULT_IP
-    MAC = system_mac_addr()
+    MAC = mac_addr_to_byte()
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -82,7 +91,7 @@ def DHCP_offer_encode(ID, suggested_ip, server_ip, lease_time):
     query += ip_addr_to_byte(suggested_ip)
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = system_mac_addr()
+    MAC = mac_addr_to_byte()
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -109,7 +118,7 @@ def DHCP_request_encode(ID, requested_ip, server_ip):
     query += HARDCODES.DEFAULT_IP
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = system_mac_addr()
+    MAC = mac_addr_to_byte()
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -135,7 +144,7 @@ def DHCP_ack_encode(ID, allocated_ip, server_ip, lease_time):
     query += ip_addr_to_byte(allocated_ip)
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = system_mac_addr()
+    MAC = mac_addr_to_byte()
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -168,22 +177,20 @@ def DHCP_decode(data):
     pivot += 2
     decoded_data['FLAGS'] = data[pivot:pivot + 2]
     pivot += 2
-    decoded_data['CI_ADDR'] = '.'.join(map(lambda x: str(x), data[pivot:pivot + 4]))
+    decoded_data['CI_ADDR'] = byte_to_ip_addr(data[pivot:pivot + 4])
     pivot += 4
-    decoded_data['YI_ADDR'] = '.'.join(map(lambda x: str(x), data[pivot:pivot + 4]))
+    decoded_data['YI_ADDR'] = byte_to_ip_addr(data[pivot:pivot + 4])
     pivot += 4
-    decoded_data['SI_ADDR'] = '.'.join(map(lambda x: str(x), data[pivot:pivot + 4]))
+    decoded_data['SI_ADDR'] = byte_to_ip_addr(data[pivot:pivot + 4])
     pivot += 4
-    decoded_data['GI_ADDR'] = '.'.join(map(lambda x: str(x), data[pivot:pivot + 4]))
+    decoded_data['GI_ADDR'] = byte_to_ip_addr(data[pivot:pivot + 4])
     pivot += 4
-    MAC = data[pivot:pivot + 16].hex()
-    decoded_data['CH_ADDR'] = '.'.join(MAC[i:i+2] for i in range(0, 12, 2))
+    decoded_data['CH_ADDR'] = byte_to_mac_addr(data[pivot:pivot + 16])
     pivot += 16
     decoded_data['S_NAME'] = data[pivot:pivot + 64]
     pivot += 64
     decoded_data['FILE'] = data[pivot:pivot + 128]
     pivot += 128
-
 
     # OPTIONS
 
@@ -239,3 +246,7 @@ def DHCP_decode(data):
         decoded_data['lease_time'] = -1
 
     return decoded_data
+
+
+if __name__ == '__main__':
+    print(DHCP_decode(DHCP_offer_encode(create_id(), '127.0.0.1', '10.10.01.1', 3600)))
