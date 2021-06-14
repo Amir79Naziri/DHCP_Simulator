@@ -119,6 +119,9 @@ class Pool:
         print('****************')
         print(self.__lease_time)
 
+    def lease_time(self):
+        return self.__lease_time
+
 
 if __name__ == '__main__':
     p = Pool()
