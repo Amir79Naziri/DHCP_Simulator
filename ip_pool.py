@@ -13,6 +13,7 @@ class Pool:
         self.__pool_mode = configuration['pool_mode']
         self.__ip_pool = dict()
         self.__reservation_list = dict()
+        self.ip_allocation_table = IpAllocationTable()
         for key in configuration['reservation_list']:
             ip = configuration['reservation_list'][key]
             self.__reservation_list[key] = [ip, True]
@@ -63,7 +64,7 @@ class Pool:
         except IOError as msg:
             print(msg)
 
-    def allocate_ip(self, mac_addr):
+    def allocate_ip(self, device_name, mac_addr):
         self.__allocation_lock.acquire()
 
         if mac_addr in self.__black_list:
@@ -74,6 +75,8 @@ class Pool:
             if self.__reservation_list[mac_addr][1]:
                 self.__reservation_list[mac_addr][1] = False
                 self.__allocation_lock.release()
+                self.ip_allocation_table.add_allocation(device_name, mac_addr,
+                                                        self.__reservation_list[mac_addr][0], self.__lease_time)
                 return self.__reservation_list[mac_addr][0]
             else:
                 self.__allocation_lock.release()
@@ -83,6 +86,8 @@ class Pool:
             if self.__ip_pool[ip] is None:
                 self.__ip_pool[ip] = mac_addr
                 self.__allocation_lock.release()
+                self.ip_allocation_table.add_allocation(device_name, mac_addr,
+                                                        ip, self.__lease_time)
                 return ip
 
         self.__allocation_lock.release()
@@ -98,6 +103,7 @@ class Pool:
         if mac_addr in self.__reservation_list.keys():
             if ip == self.__reservation_list[mac_addr][0] and not self.__reservation_list[mac_addr][1]:
                 self.__reservation_list[mac_addr][1] = True
+                self.ip_allocation_table.remove_allocation(mac_addr, ip)
                 self.__release_lock.release()
                 return True
             else:
@@ -107,6 +113,7 @@ class Pool:
         if ip in self.__ip_pool.keys():
             if self.__ip_pool[ip] == mac_addr:
                 self.__ip_pool[ip] = None
+                self.ip_allocation_table.remove_allocation(mac_addr, ip)
                 self.__release_lock.release()
                 return True
             else:
@@ -114,19 +121,21 @@ class Pool:
                 return False
 
     def print_status(self):
-        print(self.__ip_pool)
-        print('****************')
-        print(self.__reservation_list)
-        print('****************')
-        print(self.__black_list)
-        print('****************')
-        print(self.__lease_time)
+        # print(self.__ip_pool)
+        # print('****************')
+        # print(self.__reservation_list)
+        # print('****************')
+        # print(self.__black_list)
+        # print('****************')
+        # print(self.__lease_time)
+        # print('****************')
+        self.ip_allocation_table.print_table()
 
     def lease_time(self):
         return self.__lease_time
 
 
-class ip_allocation_log:
+class IpAllocationLog:
     def __init__(self, device_name, mac_addr, allocated_ip, lease_time):
         self.__device_name = device_name
         self.__mac_addr = mac_addr
@@ -153,36 +162,40 @@ class ip_allocation_log:
         expired_time = _[0] + ' hours, ' + _[1] + ' minutes, ' + _[2] + ' seconds'
         return [self.__device_name, self.__mac_addr, self.__allocated_ip, expired_time]
 
+    def mac_addr(self):
+        return self.__mac_addr
 
-class ip_allocation_table:
+    def allocated_ip(self):
+        return self.__allocated_ip
+
+
+class IpAllocationTable:
     def __init__(self):
         self.table = []
         self.lock = Semaphore()
 
     def add_allocation(self, device_name, mac_addr, allocated_ip, lease_time):
         self.lock.acquire()
-        new_log = ip_allocation_log(device_name, mac_addr, allocated_ip, lease_time)
+        new_log = IpAllocationLog(device_name, mac_addr, allocated_ip, lease_time)
         if new_log not in self.table:
             self.table.append(new_log)
         self.lock.release()
 
     def remove_allocation(self, mac_addr, allocated_ip):
         self.lock.acquire()
-        l_ = ip_allocation_log(None, mac_addr, allocated_ip, 0)
-        for _ in self.table:
-            if _ == l_:
-                self.table.remove(_)
+        for l_ in self.table:
+            if l_.allocated_ip() == allocated_ip and l_.mac_addr() == mac_addr:
+                self.table.remove(l_)
                 self.lock.release()
                 return
         self.lock.release()
 
-    def get_log_data(self, mac_addr, allocated_ip):
+    def get_allocation(self, mac_addr, allocated_ip):
         self.lock.acquire()
-        l_ = ip_allocation_log(None, mac_addr, allocated_ip, 0)
-        for _ in self.table:
-            if _ == l_:
+        for l_ in self.table:
+            if l_.allocated_ip() == allocated_ip and l_.mac_addr() == mac_addr:
                 self.lock.release()
-                return _
+                return l_
         self.lock.release()
         return None
 

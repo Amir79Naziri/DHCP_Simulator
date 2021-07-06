@@ -1,12 +1,14 @@
 import socket
 import threading
+import dhcp_protocol
 
 
-def client_handler(connection, message, address, ID):
-    message = "Message from Client-{}: ".format(ID) + bytes.decode(message)
+def client_handler(connection, data, address, ID):
+    received_data = dhcp_protocol.DHCP_decode(data)  # receive Offer
+
     adr_msg = "Client-{} Address: ".format(ID) + str(address)
 
-    print(message)
+    print(data)
     print(adr_msg)
 
     try:
@@ -19,13 +21,13 @@ def client_handler(connection, message, address, ID):
         return
 
 
-def start_server(address=('127.0.0.1', 8080)):
+def start_server():
     counter = 1
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as serverSocket:
-
+            address = (socket.gethostbyname(socket.gethostname()), 67)
             serverSocket.bind(address)
-            print('Server started')
+            print('Server started\nwaiting for client ...')
 
             while True:
                 data = serverSocket.recvfrom(1024)
