@@ -11,12 +11,28 @@ MAC_ADDR = None
 DEVICE_NAME = None
 
 
-def timer(init_time):
-    while True:
-        time.sleep(1)
-        init_time -= 1
-        if init_time <= 0:
-            raise TimeoutError
+class Timer(Thread):
+
+    def __init__(self, init_time):
+        super().__init__()
+        self.exception = None
+        self.init_time = init_time
+
+    def run(self) -> None:
+        try:
+            while True:
+                time.sleep(1)
+                self.init_time -= 1
+                if self.init_time <= 0:
+                    raise TimeoutError('time out')
+        except TimeoutError as e:
+            self.exception = e
+
+    def wait(self):
+        Thread.join(self)
+
+        if self.exception:
+            raise self.exception
 
 
 def discover(clientSocket, ID):
@@ -24,9 +40,10 @@ def discover(clientSocket, ID):
 
     s_query = dhcp_protocol.DHCP_discover_encode(ID, MAC_ADDR)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
-
+    th_timer = Timer(BACK_OFF_CUTOFF)
+    th_timer.start()
     try:
-        Thread(target=timer, args=(BACK_OFF_CUTOFF,)).start()
+        th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
             data = dhcp_protocol.DHCP_decode(r_query)
@@ -34,17 +51,19 @@ def discover(clientSocket, ID):
                     data['M_TYPE'] == 'OFFER':
                 return data
     except TimeoutError:
-        BACK_OFF_CUTOFF = BACK_OFF_CUTOFF * 2 * random.random()
+        BACK_OFF_CUTOFF = BACK_OFF_CUTOFF * 2 * random.uniform(0.5, 1)
+        print('here')
         return None
 
 
 def request(clientSocket, ID, yi_addr, si_addr, init_time):
-
-    s_query = dhcp_protocol.DHCP_request_encode(ID, yi_addr, si_addr, MAC_ADDR)
+    s_query = dhcp_protocol.DHCP_request_encode(ID, yi_addr, si_addr, MAC_ADDR, DEVICE_NAME)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
 
+    th_timer = Timer(init_time)
+    th_timer.start()
     try:
-        Thread(target=timer, args=(init_time,)).start()
+        th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
             data = dhcp_protocol.DHCP_decode(r_query)
@@ -68,7 +87,7 @@ def start_client():
                 if data is None:
                     continue
 
-                data = request(clientSocket, ID, data['YI_ADDR'], data['SI_ADDR'])
+                data = request(clientSocket, ID, data['YI_ADDR'], data['SI_ADDR'], 10)
                 if data is None:
                     continue
 
