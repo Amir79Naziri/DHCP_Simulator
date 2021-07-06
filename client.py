@@ -1,5 +1,5 @@
 import socket
-import dhcp_protocol
+from dhcp_protocol import create_id, DHCP_discover_encode, DHCP_request_encode, DHCP_decode
 from typing import Final
 import time
 import random
@@ -38,7 +38,7 @@ class Timer(Thread):
 def discover(clientSocket, ID):
     global BACK_OFF_CUTOFF, INITIAL_INTERVAL
 
-    s_query = dhcp_protocol.DHCP_discover_encode(ID, MAC_ADDR, DEVICE_NAME)
+    s_query = DHCP_discover_encode(ID, MAC_ADDR, DEVICE_NAME)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
     th_timer = Timer(BACK_OFF_CUTOFF)
     th_timer.start()
@@ -46,7 +46,7 @@ def discover(clientSocket, ID):
         th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
-            data = dhcp_protocol.DHCP_decode(r_query)
+            data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'OFFER':
                 return data
@@ -57,7 +57,7 @@ def discover(clientSocket, ID):
 
 
 def request(clientSocket, ID, yi_addr, si_addr, init_time):
-    s_query = dhcp_protocol.DHCP_request_encode(ID, yi_addr, si_addr, MAC_ADDR, DEVICE_NAME)
+    s_query = DHCP_request_encode(ID, yi_addr, si_addr, MAC_ADDR, DEVICE_NAME)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
 
     th_timer = Timer(init_time)
@@ -66,7 +66,7 @@ def request(clientSocket, ID, yi_addr, si_addr, init_time):
         th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
-            data = dhcp_protocol.DHCP_decode(r_query)
+            data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'ACK':
                 return data
@@ -75,7 +75,7 @@ def request(clientSocket, ID, yi_addr, si_addr, init_time):
 
 
 def start_client():
-    ID = dhcp_protocol.create_id()
+    ID = create_id()
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as clientSocket:
