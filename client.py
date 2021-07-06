@@ -38,7 +38,7 @@ class Timer(Thread):
 def discover(clientSocket, ID):
     global BACK_OFF_CUTOFF, INITIAL_INTERVAL
 
-    s_query = dhcp_protocol.DHCP_discover_encode(ID, MAC_ADDR)
+    s_query = dhcp_protocol.DHCP_discover_encode(ID, MAC_ADDR, DEVICE_NAME)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
     th_timer = Timer(BACK_OFF_CUTOFF)
     th_timer.start()

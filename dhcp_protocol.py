@@ -55,7 +55,7 @@ def byte_to_mac_addr(byte_array):
     return '.'.join(MAC[i:i + 2] for i in range(0, 12, 2))
 
 
-def DHCP_discover_encode(ID):
+def DHCP_discover_encode(ID, mac_addr, device_name):
     query = HARDCODES.REQUEST
     query += HARDCODES.ETHERNET
     query += HARDCODES.HARDWARE_ADDR_LEN
@@ -67,7 +67,7 @@ def DHCP_discover_encode(ID):
     query += HARDCODES.DEFAULT_IP
     query += HARDCODES.DEFAULT_IP
     query += HARDCODES.DEFAULT_IP
-    MAC = mac_addr_to_byte()
+    MAC = mac_addr_to_byte(mac_addr)
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -76,12 +76,14 @@ def DHCP_discover_encode(ID):
     # OPTIONS
 
     query += b'\x35\x01\x01'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
+    query += b'\x0C' + struct.pack('!B', len(device_name.encode("utf-8").hex()) // 2) + \
+             device_name.encode("utf-8")
     query += HARDCODES.END_OPTION
 
     return query
 
 
-def DHCP_offer_encode(ID, suggested_ip, server_ip, lease_time):
+def DHCP_offer_encode(ID, suggested_ip, server_ip, lease_time, mac_addr):
     query = HARDCODES.REPLY
     query += HARDCODES.ETHERNET
     query += HARDCODES.HARDWARE_ADDR_LEN
@@ -93,7 +95,7 @@ def DHCP_offer_encode(ID, suggested_ip, server_ip, lease_time):
     query += ip_addr_to_byte(suggested_ip)
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = mac_addr_to_byte()
+    MAC = mac_addr_to_byte(mac_addr)
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -108,7 +110,7 @@ def DHCP_offer_encode(ID, suggested_ip, server_ip, lease_time):
     return query
 
 
-def DHCP_request_encode(ID, requested_ip, server_ip):
+def DHCP_request_encode(ID, requested_ip, server_ip, mac_addr, device_name):
     query = HARDCODES.REQUEST
     query += HARDCODES.ETHERNET
     query += HARDCODES.HARDWARE_ADDR_LEN
@@ -120,7 +122,7 @@ def DHCP_request_encode(ID, requested_ip, server_ip):
     query += HARDCODES.DEFAULT_IP
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = mac_addr_to_byte()
+    MAC = mac_addr_to_byte(mac_addr)
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -129,12 +131,15 @@ def DHCP_request_encode(ID, requested_ip, server_ip):
     # OPTIONS
 
     query += b'\x35\x01\x03'  # Option: (t=53,l=1) DHCP Message Type = DHCP Request
+    query += b'\x0C' + struct.pack('!B', len(device_name.encode("utf-8").hex()) // 2) +\
+             device_name.encode("utf-8")
+
     query += HARDCODES.END_OPTION
 
     return query
 
 
-def DHCP_ack_encode(ID, allocated_ip, server_ip, lease_time):
+def DHCP_ack_encode(ID, allocated_ip, server_ip, lease_time, mac_addr):
     query = HARDCODES.REPLY
     query += HARDCODES.ETHERNET
     query += HARDCODES.HARDWARE_ADDR_LEN
@@ -146,7 +151,7 @@ def DHCP_ack_encode(ID, allocated_ip, server_ip, lease_time):
     query += ip_addr_to_byte(allocated_ip)
     query += ip_addr_to_byte(server_ip)
     query += HARDCODES.DEFAULT_IP
-    MAC = mac_addr_to_byte()
+    MAC = mac_addr_to_byte(mac_addr)
     query += MAC
     query += HARDCODES.MAC_ADDR_PADDING
     query += HARDCODES.SNAME
@@ -165,7 +170,7 @@ def DHCP_decode(data):
     decoded_data = dict()
 
     pivot = 0
-    decoded_data['OP'] = data[pivot:pivot + 1]
+    decoded_data['OP'] = int(data[pivot:pivot + 1].hex())
     pivot += 1
     decoded_data['HW_TYPE'] = data[pivot:pivot + 1]
     pivot += 1
@@ -228,6 +233,23 @@ def DHCP_decode(data):
 
     decoded_data['M_TYPE'] = M_TYPE
 
+    if M_TYPE == 'REQUEST' or M_TYPE == 'DISCOVER':
+        pivot_copy = pivot
+
+        while True:
+            T = data[pivot_copy]
+            pivot_copy += 1
+            L = data[pivot_copy]
+            pivot_copy += 1
+            if T == 12:
+                decoded_data['device_name'] = data[pivot_copy:pivot_copy + L].decode("utf-8")
+                break
+            else:
+                pivot_copy += L
+    else:
+        decoded_data['device_name'] = 'NAN'
+
+
     if M_TYPE == 'OFFER' or M_TYPE == 'ACK':
         pivot_copy = pivot
 
@@ -251,4 +273,5 @@ def DHCP_decode(data):
 
 
 if __name__ == '__main__':
-    print(DHCP_decode(DHCP_offer_encode(create_id(), '127.0.0.1', '10.10.01.1', 3600)))
+    print(DHCP_decode(DHCP_discover_encode(create_id(), 'f0.12.11.67.ff.ff',
+                                          'SAMSUNG')))
