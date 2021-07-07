@@ -75,8 +75,6 @@ def start_client():
                     if data is None:
                         break
 
-    except socket.timeout as msg:
-        print(msg)
     except ConnectionError as msg:
         print(msg)
     except IOError as msg:
