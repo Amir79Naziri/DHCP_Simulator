@@ -1,40 +1,25 @@
 import socket
 import threading
 import dhcp_protocol
-
-
-def client_handler(connection, data, address, ID):
-    received_data = dhcp_protocol.DHCP_decode(data)  # receive Offer
-
-    adr_msg = "Client-{} Address: ".format(ID) + str(address)
-
-    print(data)
-    print(adr_msg)
-
-    try:
-        connection.sendto(str.encode('done'), address)
-    except ConnectionError as msg_:
-        print(msg_)
-        return
-    except IOError as msg_:
-        print(msg_)
-        return
+from ip_pool import Pool
 
 
 def start_server():
-    counter = 1
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as serverSocket:
-            address = (socket.gethostbyname(socket.gethostname()), 67)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as serverSocket:
+            serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+            address = (socket.gethostbyname(socket.gethostname()), 8080)
             serverSocket.bind(address)
-            print('Server started\nwaiting for client ...')
+
+            pool = Pool()
+            print('Server started...')
 
             while True:
-                data = serverSocket.recvfrom(1024)
-                print('Client-{} accepted'.format(counter))
-                threading.Thread(target=client_handler,
-                                 args=(serverSocket, data[0], data[1], counter)).start()
-                counter += 1
+                data, addr = serverSocket.recvfrom(1024)
+                print(data)
+                print(addr)
+                serverSocket.sendto(b'OK', ('<broadcast>', 9090))
 
     except ConnectionError as msg:
         print(msg)
