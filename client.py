@@ -3,7 +3,7 @@ from dhcp_protocol import create_id, DHCP_discover_encode, DHCP_request_encode, 
 from typing import Final
 import time
 import random
-from timer import Timer
+
 
 INITIAL_INTERVAL: Final = 120
 BACK_OFF_CUTOFF = 10
@@ -15,40 +15,35 @@ def discover(clientSocket, ID):
     global BACK_OFF_CUTOFF, INITIAL_INTERVAL
 
     s_query = DHCP_discover_encode(ID, MAC_ADDR, DEVICE_NAME)
+    clientSocket.settimeout(BACK_OFF_CUTOFF)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
-    th_timer = Timer(BACK_OFF_CUTOFF)
-    th_timer.start()
+
     try:
-        th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'OFFER':
-                th_timer.kill()
                 return data
-    except TimeoutError:
+    except socket.timeout:
         BACK_OFF_CUTOFF = BACK_OFF_CUTOFF * 2 * random.uniform(0.5, 1)
-        print('here')
         return None
 
 
 def request(clientSocket, ID, yi_addr, si_addr, init_time):
     s_query = DHCP_request_encode(ID, yi_addr, si_addr, MAC_ADDR, DEVICE_NAME)
+    clientSocket.settimeout(init_time)
     clientSocket.sendto(s_query, ('<broadcast>', 8080))
 
-    th_timer = Timer(init_time)
-    th_timer.start()
     try:
-        th_timer.wait()
         while True:
             r_query = clientSocket.recvfrom(1024)
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'ACK':
-                th_timer.kill()
+
                 return data
-    except TimeoutError:
+    except socket.timeout:
         return None
 
 
