@@ -1,5 +1,5 @@
 import time
-from threading import Thread
+from threading import Thread, Semaphore
 
 
 class Timer(Thread):
@@ -8,14 +8,21 @@ class Timer(Thread):
         super().__init__()
         self.exception = None
         self.init_time = init_time
+        self.lock = Semaphore()
 
     def run(self) -> None:
         try:
             while True:
                 time.sleep(1)
+                self.lock.acquire()
                 self.init_time -= 1
-                if self.init_time <= 0:
+
+                if self.init_time == 0:
+                    self.lock.release()
                     raise TimeoutError('time out')
+                elif self.init_time < 0:
+                    self.lock.release()
+                    return
         except TimeoutError as e:
             self.exception = e
 
@@ -24,3 +31,8 @@ class Timer(Thread):
 
         if self.exception:
             raise self.exception
+
+    def kill(self):
+        self.lock.acquire()
+        self.init_time = -1
+        self.lock.release()

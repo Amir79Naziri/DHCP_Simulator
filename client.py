@@ -25,6 +25,7 @@ def discover(clientSocket, ID):
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'OFFER':
+                th_timer.kill()
                 return data
     except TimeoutError:
         BACK_OFF_CUTOFF = BACK_OFF_CUTOFF * 2 * random.uniform(0.5, 1)
@@ -45,6 +46,7 @@ def request(clientSocket, ID, yi_addr, si_addr, init_time):
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'ACK':
+                th_timer.kill()
                 return data
     except TimeoutError:
         return None
