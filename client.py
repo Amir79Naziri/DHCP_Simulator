@@ -20,7 +20,7 @@ def discover(clientSocket, ID):
 
     try:
         while True:
-            r_query = clientSocket.recvfrom(1024)
+            r_query, _ = clientSocket.recvfrom(1024)
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'OFFER':
@@ -37,7 +37,7 @@ def request(clientSocket, ID, yi_addr, si_addr, init_time):
 
     try:
         while True:
-            r_query = clientSocket.recvfrom(1024)
+            r_query, _ = clientSocket.recvfrom(1024)
             data = DHCP_decode(r_query)
             if data['XID'] == ID and data['CH_ADDR'] == MAC_ADDR and data['OP'] == 2 and \
                     data['M_TYPE'] == 'ACK':
