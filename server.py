@@ -1,9 +1,26 @@
 import socket
 from dhcp_protocol import DHCP_offer_encode, DHCP_ack_encode, DHCP_decode
 from ip_pool import Pool
-
+import time
+from threading import Thread
 SERVER_IP = None
 pool = None
+PENDING_MACS = dict()
+
+
+def timer():
+    while True:
+        time.sleep(1)
+        for mac in PENDING_MACS.copy():
+            new_time = PENDING_MACS[mac][0] - 1
+            service = PENDING_MACS[1]
+            if new_time <= 0:
+                if service == 'offered':
+                    pool.reject_ip(mac)
+                else:
+                    pool.deallocate_ip(mac)
+                del PENDING_MACS[mac]
+
 
 
 def offer(serverSocket, ID, mac_addr, device_name):
@@ -34,9 +51,13 @@ def start_server():
                 r_query, _ = serverSocket.recvfrom(1024)
                 data = DHCP_decode(r_query)
                 if data['OP'] == 1 and data['M_TYPE'] == 'DISCOVER':
-                    pass
+                    PENDING_MACS[data['CH_ADDR']] = (10, 'offered')
+                    offer(serverSocket, data['XID'], data['CH_ADDR'], data['device_name'])
+
                 elif data['OP'] == 1 and data['M_TYPE'] == 'REQUEST':
-                    pass
+                    if data['CH_ADDR'] in PENDING_MACS:
+                        PENDING_MACS[data['CH_ADDR']] = (pool.lease_time(), 'allocated')
+                        ack(serverSocket, data['XID'], data['CH_ADDR'], data['device_name'])
 
 
     except ConnectionError as msg:
@@ -48,4 +69,5 @@ def start_server():
 if __name__ == '__main__':
     SERVER_IP = socket.gethostbyname(socket.gethostname())
     pool = Pool()
+    Thread(target=timer).start()
     start_server()
