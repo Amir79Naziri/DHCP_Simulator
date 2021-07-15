@@ -10,10 +10,10 @@
   },
   "lease_time": 10,
   "reservation_list": {
-  "mac1": "ip1",
+  "00.00.00.00.00.ff": "192.168.1.7",
   "mac2": "ip2"
   },
   "black_list": [
-    "mac3", "mac4"
+    "00.00.00.00.00.00", "mac4"
   ]
 }

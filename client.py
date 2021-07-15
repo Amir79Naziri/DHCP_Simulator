@@ -56,10 +56,12 @@ def start_client():
             clientSocket.bind(('0.0.0.0', 9090))
 
             while True:
+                print('discovering...[timeout:{:.2f} s]'.format(BACK_OFF_CUTOFF))
                 data = discover(clientSocket, ID)
                 if data is None:
                     continue
 
+                print('requesting...[timeout:{:.2f} s]'.format(10))
                 data = request(clientSocket, ID, data['YI_ADDR'], data['SI_ADDR'], 10)
                 if data is None:
                     continue
@@ -71,6 +73,7 @@ def start_client():
                     print('ip allocated : ', data['YI_ADDR'])
                     time.sleep(renewal_time)
 
+                    print('requesting, again...[timeout:{:.2f} s]'.format(10))
                     data = request(clientSocket, ID, data['YI_ADDR'], data['SI_ADDR'], rebind_time - renewal_time)
                     if data is None:
                         print('ip deactivated')

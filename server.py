@@ -33,12 +33,16 @@ def show_list():
 
 def offer(serverSocket, ID, mac_addr, device_name):
     offered_ip = pool.offer_ip(mac_addr, device_name)
+    if offered_ip is None:
+        return
     s_query = DHCP_offer_encode(ID, offered_ip, socket.gethostbyname(socket.gethostname()), pool.lease_time(), mac_addr)
     serverSocket.sendto(s_query, ('<broadcast>', 9090))
 
 
 def ack(serverSocket, ID, mac_addr, device_name):
     allocated_ip = pool.allocate_ip(mac_addr, device_name)
+    if allocated_ip is None:
+        return
     s_query = DHCP_ack_encode(ID, allocated_ip, socket.gethostbyname(socket.gethostname()), pool.lease_time(), mac_addr)
     serverSocket.sendto(s_query, ('<broadcast>', 9090))
 

@@ -26,7 +26,12 @@ class Pool:
             index = start
 
             while True:
-                if index not in self.__reservation_list.keys():
+                valid = True
+                for val in self.__reservation_list.values():
+                    if val.get_ip() == index:
+                        valid = False
+                        break
+                if valid:
                     self.__ip_pool[index] = IPConfig(index)
 
                 if index == end:
@@ -65,7 +70,14 @@ class Pool:
 
                 if Pool.change_10ip_2ip(index)[0:offset] != init_ip_2[0:offset]:
                     break
-                if index not in self.__reservation_list.keys() and index != '192.168.1.0':
+
+                valid = True
+                for val in self.__reservation_list.values():
+                    if val.get_ip() == index:
+                        valid = False
+                        break
+
+                if valid and index != '192.168.1.0':
                     self.__ip_pool[index] = IPConfig(index)
 
 
