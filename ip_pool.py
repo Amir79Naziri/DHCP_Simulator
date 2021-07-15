@@ -154,7 +154,8 @@ class Pool:
             return self.__reservation_list[mac_addr].get_ip()
 
         for ip in self.__ip_pool:
-            if not (self.__ip_pool[ip].is_offered() or self.__ip_pool[ip].is_reserved()):
+            if (not (self.__ip_pool[ip].is_offered() or self.__ip_pool[ip].is_reserved())) or \
+                    self.__ip_pool[ip].get_mac_addr() == mac_addr:
                 self.__ip_pool[ip].offer(mac_addr, device_name)
                 self.__allocation_lock.release()
                 return self.__ip_pool[ip].get_ip()
