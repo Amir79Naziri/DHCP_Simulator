@@ -3,6 +3,7 @@ from dhcp_protocol import DHCP_offer_encode, DHCP_ack_encode, DHCP_decode
 from ip_pool import Pool
 import time
 from threading import Thread
+
 pool = Pool()
 PENDING_MACS = dict()
 
@@ -21,8 +22,13 @@ def timer():
                 del PENDING_MACS[mac]
             else:
                 PENDING_MACS[mac] = (new_time, service)
-        print(PENDING_MACS)
 
+
+def show_list():
+    while True:
+        if input() == 'ls':
+            ls = PENDING_MACS.copy()
+            pool.print_status(ls)
 
 
 def offer(serverSocket, ID, mac_addr, device_name):
@@ -68,4 +74,5 @@ def start_server():
 
 if __name__ == '__main__':
     Thread(target=timer).start()
+    Thread(target=show_list).start()
     start_server()

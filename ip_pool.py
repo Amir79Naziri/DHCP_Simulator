@@ -62,6 +62,13 @@ class Pool:
 
             index = configuration["subnet"]["ip_block"]
             while True:
+
+                if Pool.change_10ip_2ip(index)[0:offset] != init_ip_2[0:offset]:
+                    break
+                if index not in self.__reservation_list.keys() and index != '192.168.1.0':
+                    self.__ip_pool[index] = IPConfig(index)
+
+
                 data = list(map(lambda x: int(x), index.split('.')))
                 if data[3] < 255:
                     data[3] += 1
@@ -151,7 +158,7 @@ class Pool:
             return None
 
         if mac_addr in self.__reservation_list:
-            self.__reservation_list[mac_addr].allocate(mac_addr, device_name, self.__lease_time)
+            self.__reservation_list[mac_addr].allocate(mac_addr, device_name)
             self.__allocation_lock.release()
             return self.__reservation_list[mac_addr].get_ip()
 
@@ -159,7 +166,7 @@ class Pool:
             if ((self.__ip_pool[ip].is_offered() and not self.__ip_pool[ip].is_reserved()) or
                 (self.__ip_pool[ip].is_reserved() and not self.__ip_pool[ip].is_offered())) and \
                     self.__ip_pool[ip].get_mac_addr() == mac_addr:
-                self.__ip_pool[ip].allocate(mac_addr, device_name, self.__lease_time)
+                self.__ip_pool[ip].allocate(mac_addr, device_name)
                 self.__allocation_lock.release()
                 return self.__ip_pool[ip].get_ip()
 
@@ -208,23 +215,30 @@ class Pool:
 
         self.__allocation_lock.release()
 
-    def print_status(self):
-        print(self.__ip_pool)
-        print('****************')
-        print(self.__reservation_list)
-        print('****************')
-        print(self.__black_list)
-        print('****************')
-        print(self.__lease_time)
-        print('****************')
+    def print_status(self, status_list):
+        # print(self.__ip_pool)
+        # print('****************')
+        # print(self.__reservation_list)
+        # print('****************')
+        # print(self.__black_list)
+        # print('****************')
+        # print(self.__lease_time)
+        # print('****************')
 
         data = []
         for ip in self.__ip_pool:
             if self.__ip_pool[ip].is_reserved():
-                data.append(self.__ip_pool[ip].status())
+                try:
+                    data.append(self.__ip_pool[ip].
+                                status(status_list[self.__ip_pool[ip].get_mac_addr()][0]))
+                except KeyError:
+                    pass
         for mac in self.__reservation_list:
             if self.__reservation_list[mac].is_reserved():
-                data.append(self.__reservation_list[mac].status())
+                try:
+                    data.append(self.__reservation_list[mac].status(status_list[mac][0]))
+                except KeyError:
+                    pass
 
         print(tabulate(data, headers=['Device Name', 'MAC Address', 'IP Address', 'Expire Time'],
                        tablefmt="pretty"), )
@@ -242,7 +256,6 @@ class IPConfig:
         else:
             self.__static = False
         self.__device_name = None
-        self.__lease_time = -1
         self.__offered = False
         self.__reserved = False
 
@@ -250,7 +263,6 @@ class IPConfig:
         if not self.__static:
             self.__mac_addr = None
         self.__device_name = None
-        self.__lease_time = -1
         self.__reserved = False
 
     def reject(self):
@@ -259,8 +271,7 @@ class IPConfig:
         self.__device_name = None
         self.__offered = False
 
-    def allocate(self, mac_addr, device_name, lease_time):
-        self.__lease_time = lease_time
+    def allocate(self, mac_addr, device_name):
         self.__mac_addr = mac_addr
         self.__reserved = True
         self.__offered = False
@@ -268,7 +279,6 @@ class IPConfig:
 
     def offer(self, mac_addr, device_name):
         if not self.__static or (self.__static and self.__mac_addr == mac_addr):
-            self.__lease_time = -1
             self.__mac_addr = mac_addr
             self.__device_name = device_name
             self.__offered = True
@@ -286,15 +296,7 @@ class IPConfig:
     def get_ip(self):
         return self.__ip
 
-    def status(self):
-        time_ = str(timedelta(seconds=self.__lease_time)).split(':')
+    def status(self, remained_time):
+        time_ = str(timedelta(seconds=remained_time)).split(':')
         expired_time = time_[0] + ' hours, ' + time_[1] + ' minutes, ' + time_[2] + ' seconds'
         return [self.__device_name, self.__mac_addr, self.__ip, expired_time]
-
-    def set_lease_time(self, new_time):
-        self.__lease_time = new_time
-
-
-if __name__ == '__main__':
-    p = Pool()
-    p.print_status()
