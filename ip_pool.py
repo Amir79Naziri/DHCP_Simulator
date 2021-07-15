@@ -156,11 +156,8 @@ class Pool:
             return self.__reservation_list[mac_addr].get_ip()
 
         for ip in self.__ip_pool:
-            print(self.__ip_pool[ip].is_offered())
-            print(not self.__ip_pool[ip].is_reserved())
-            print(self.__ip_pool[ip].get_mac_addr())
-            print(mac_addr)
-            if self.__ip_pool[ip].is_offered() and not self.__ip_pool[ip].is_reserved() and \
+            if ((self.__ip_pool[ip].is_offered() and not self.__ip_pool[ip].is_reserved()) or
+                (self.__ip_pool[ip].is_reserved() and not self.__ip_pool[ip].is_offered())) and \
                     self.__ip_pool[ip].get_mac_addr() == mac_addr:
                 self.__ip_pool[ip].allocate(mac_addr, device_name, self.__lease_time)
                 self.__allocation_lock.release()
@@ -263,21 +260,19 @@ class IPConfig:
         self.__offered = False
 
     def allocate(self, mac_addr, device_name, lease_time):
-        if not self.__reserved and self.__offered and self.__mac_addr == mac_addr:
-            self.__lease_time = lease_time
-            self.__mac_addr = mac_addr
-            self.__reserved = True
-            self.__offered = False
-            self.__device_name = device_name
+        self.__lease_time = lease_time
+        self.__mac_addr = mac_addr
+        self.__reserved = True
+        self.__offered = False
+        self.__device_name = device_name
 
     def offer(self, mac_addr, device_name):
-        if not self.__reserved and not self.__offered:
-            if not self.__static or (self.__static and self.__mac_addr == mac_addr):
-                self.__lease_time = -1
-                self.__mac_addr = mac_addr
-                self.__device_name = device_name
-                self.__offered = True
-                self.__reserved = False
+        if not self.__static or (self.__static and self.__mac_addr == mac_addr):
+            self.__lease_time = -1
+            self.__mac_addr = mac_addr
+            self.__device_name = device_name
+            self.__offered = True
+            self.__reserved = False
 
     def is_reserved(self):
         return self.__reserved

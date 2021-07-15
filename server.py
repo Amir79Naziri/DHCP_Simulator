@@ -3,8 +3,7 @@ from dhcp_protocol import DHCP_offer_encode, DHCP_ack_encode, DHCP_decode
 from ip_pool import Pool
 import time
 from threading import Thread
-SERVER_IP = None
-pool = None
+pool = Pool()
 PENDING_MACS = dict()
 
 
@@ -13,27 +12,28 @@ def timer():
         time.sleep(1)
         for mac in PENDING_MACS.copy():
             new_time = PENDING_MACS[mac][0] - 1
-            service = PENDING_MACS[1]
+            service = PENDING_MACS[mac][1]
             if new_time <= 0:
                 if service == 'offered':
                     pool.reject_ip(mac)
                 else:
                     pool.deallocate_ip(mac)
                 del PENDING_MACS[mac]
+            else:
+                PENDING_MACS[mac] = (new_time, service)
+        print(PENDING_MACS)
 
 
 
 def offer(serverSocket, ID, mac_addr, device_name):
     offered_ip = pool.offer_ip(mac_addr, device_name)
-    print(offered_ip)
-    s_query = DHCP_offer_encode(ID, offered_ip, SERVER_IP, pool.lease_time(), mac_addr)
+    s_query = DHCP_offer_encode(ID, offered_ip, socket.gethostbyname(socket.gethostname()), pool.lease_time(), mac_addr)
     serverSocket.sendto(s_query, ('<broadcast>', 9090))
 
 
 def ack(serverSocket, ID, mac_addr, device_name):
     allocated_ip = pool.allocate_ip(mac_addr, device_name)
-    print(allocated_ip)
-    s_query = DHCP_ack_encode(ID, allocated_ip, SERVER_IP, pool.lease_time(), mac_addr)
+    s_query = DHCP_ack_encode(ID, allocated_ip, socket.gethostbyname(socket.gethostname()), pool.lease_time(), mac_addr)
     serverSocket.sendto(s_query, ('<broadcast>', 9090))
 
 
@@ -42,7 +42,7 @@ def start_server():
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as serverSocket:
             serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-            address = (SERVER_IP, 8080)
+            address = ('', 8080)
             serverSocket.bind(address)
 
             print('Server started...')
@@ -67,7 +67,5 @@ def start_server():
 
 
 if __name__ == '__main__':
-    SERVER_IP = socket.gethostbyname(socket.gethostname())
-    pool = Pool()
     Thread(target=timer).start()
     start_server()

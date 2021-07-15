@@ -73,6 +73,7 @@ def start_client():
 
                     data = request(clientSocket, ID, data['YI_ADDR'], data['SI_ADDR'], rebind_time - renewal_time)
                     if data is None:
+                        print('ip deactivated')
                         break
 
     except ConnectionError as msg:
