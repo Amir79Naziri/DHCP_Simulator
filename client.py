@@ -26,7 +26,7 @@ def discover(clientSocket, ID):
                     data['M_TYPE'] == 'OFFER':
                 return data
     except socket.timeout:
-        BACK_OFF_CUTOFF = BACK_OFF_CUTOFF * 2 * random.uniform(0.5, 1)
+        BACK_OFF_CUTOFF = min(BACK_OFF_CUTOFF * 2 * random.uniform(0.5, 1), INITIAL_INTERVAL)
         return None
 
 
