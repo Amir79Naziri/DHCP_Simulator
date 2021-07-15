@@ -270,8 +270,3 @@ def DHCP_decode(data):
         decoded_data['lease_time'] = -1
 
     return decoded_data
-
-
-if __name__ == '__main__':
-    print(DHCP_decode(DHCP_discover_encode(create_id(), 'f0.12.11.67.ff.ff',
-                                          'SAMSUNG')))
